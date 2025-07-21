@@ -1,7 +1,8 @@
 const mineflayer = require('mineflayer');
 const generateUsername = require('random-username-generator');
 
-const serverIP = 'blenny.aternos.host';
+// تم تحديث العنوان هنا ⬇️
+const serverIP = 'MCZonee.aternos.me';
 const serverPort = 41445;
 const version = '1.21.7';
 

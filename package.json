@@ -5,7 +5,6 @@
   "main": "bot.js",
   "dependencies": {
     "mineflayer": "^4.15.0",
-    "mineflayer-auto-reconnect": "^1.0.3",
     "random-username-generator": "^1.0.4"
   }
 }

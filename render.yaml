@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: minecraft-afk-bot
+    plan: free
+    env: node
+    autoSleep: false

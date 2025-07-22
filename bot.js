@@ -2,12 +2,17 @@ const mineflayer = require('mineflayer');
 const generateUsername = require('random-username-generator');
 const express = require('express');
 
-// 1. إعداد خادم ويب لتفادي إيقاف Render للتطبيق
+// 1. إعداد خادم ويب بدون متغيرات بيئة
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // يستخدم PORT إذا وجد أو 3000 افتراضياً
 
 app.get('/', (req, res) => {
   res.send('Minecraft AFK Bot is running!');
+});
+
+// إضافة نقطة نهاية للحفاظ على التطبيق نشطاً
+app.get('/keepalive', (req, res) => {
+  res.send('Bot is alive!');
 });
 
 app.listen(PORT, () => {
@@ -22,7 +27,7 @@ const version = '1.21.7';
 const settings = {
   jumpInterval: 15000,
   chatInterval: 30000,
-  reconnectDelay: 10000,
+  reconnectDelay: 30000, // زيادة وقت إعادة المحاولة
   chatMessages: [
     "مرحباً! أنا هنا لأجنب AFK",
     "السيرفر ممتاز اليوم",
@@ -32,13 +37,20 @@ const settings = {
   ]
 };
 
+// دالة بديلة لتوليد الأسماء
+function generateRandomName() {
+  const prefixes = ['سريع', 'قوي', 'ذكي', 'هادئ', 'مبدع'];
+  const suffixes = ['أسد', 'نسر', 'فهد', 'ذئب', 'دب'];
+  const num = Math.floor(Math.random() * 1000);
+  return `${prefixes[Math.floor(Math.random()*prefixes.length)]}${
+          suffixes[Math.floor(Math.random()*suffixes.length)]}${num}`;
+}
+
 function createBot() {
   try {
-    // توليد اسم عشوائي (بديل في حالة وجود مشاكل)
-    const username = generateUsername.generate() || 
-                    `Bot${Math.floor(Math.random() * 10000)}`;
+    const username = generateRandomName();
     
-    console.log(`[${new Date().toLocaleString()}] Connecting as: ${username}`);
+    console.log(`[${new Date().toLocaleString()}] محاولة الاتصال باسم: ${username}`);
     
     const bot = mineflayer.createBot({
       host: serverIP,
@@ -48,20 +60,23 @@ function createBot() {
       auth: 'offline'
     });
 
+    // إعادة الاتصال التلقائي
     bot.on('end', () => {
-      console.log(`[${new Date().toLocaleString()}] Disconnected. Reconnecting in ${settings.reconnectDelay/1000}s...`);
+      console.log(`[${new Date().toLocaleString()}] انقطع الاتصال. إعادة المحاولة بعد ${settings.reconnectDelay/1000} ثواني...`);
       setTimeout(createBot, settings.reconnectDelay);
     });
 
+    // تغيير الاسم عند الطرد
     bot.on('kicked', (reason) => {
-      console.log(`[${new Date().toLocaleString()}] Kicked: ${reason}`);
+      console.log(`[${new Date().toLocaleString()}] طرد من السيرفر! السبب: ${reason}`);
       bot.end();
     });
 
+    // عند الاتصال الناجح
     bot.on('spawn', () => {
-      console.log(`[${new Date().toLocaleString()}] Successfully connected!`);
+      console.log(`[${new Date().toLocaleString()}] دخل السيرفر بنجاح!`);
       
-      // مؤقت القفز
+      // القفز لتجنب AFK
       const jumpInterval = setInterval(() => {
         if(bot.entity) {
           bot.setControlState('jump', true);
@@ -69,11 +84,11 @@ function createBot() {
         }
       }, settings.jumpInterval);
 
-      // مؤقت الشات
+      // الكتابة في الشات
       const chatInterval = setInterval(() => {
         if(bot.entity) {
-          const msg = settings.chatMessages[Math.floor(Math.random() * settings.chatMessages.length)];
-          bot.chat(msg);
+          const randomMsg = settings.chatMessages[Math.floor(Math.random() * settings.chatMessages.length)];
+          bot.chat(randomMsg);
         }
       }, settings.chatInterval);
 
@@ -84,12 +99,13 @@ function createBot() {
       });
     });
 
+    // إدارة الأخطاء
     bot.on('error', (err) => {
-      console.error(`[${new Date().toLocaleString()}] ERROR: ${err}`);
+      console.error(`[${new Date().toLocaleString()}] خطأ: ${err}`);
     });
     
   } catch (err) {
-    console.error(`[${new Date().toLocaleString()}] FATAL ERROR: ${err}`);
+    console.error(`[${new Date().toLocaleString()}] خطأ جسيم: ${err}`);
     setTimeout(createBot, settings.reconnectDelay);
   }
 }

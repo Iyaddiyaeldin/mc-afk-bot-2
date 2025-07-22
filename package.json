@@ -1,10 +1,14 @@
 {
   "name": "minecraft-afk-bot",
   "version": "1.0.0",
-  "description": "24/7 Minecraft AFK Bot",
+  "description": "24/7 Minecraft AFK Bot for Render",
   "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
   "dependencies": {
     "mineflayer": "^4.15.0",
-    "random-username-generator": "^1.0.4"
+    "random-username-generator": "^1.0.4",
+    "express": "^4.18.2"
   }
 }

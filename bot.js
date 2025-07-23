@@ -25,14 +25,16 @@ const version = '1.21.7';
 const settings = {
   jumpInterval: 15000,
   chatInterval: 30000,
-  reconnectDelay: 30000, // 30 ثانية
+  reconnectDelay: 30000,
   chatMessages: [
     "Hello! I'm an AFK bot",
     "Nice server today!",
     "What's new?",
     "Hope you're all doing well",
     "This bot runs 24/7"
-  ]
+  ],
+  bedSearchRadius: 3, // البحث عن سرير في دائرة نصف قطرها 3 بلوكات
+  sleepTime: [13000, 23000] // وقت النوم بين 13000 و 23000 (وقت ماينكرافت)
 };
 
 // دالة لتوليد أسماء لاتينية عشوائية
@@ -58,9 +60,16 @@ function createBot() {
       auth: 'offline'
     });
 
+    // متغيرات التحكم بالنوم
+    let isSleeping = false;
+    let jumpInterval;
+    let chatInterval;
+    let sleepCheckInterval;
+
     // إعادة الاتصال التلقائي
     bot.on('end', () => {
       console.log(`[${new Date().toLocaleString()}] Disconnected. Reconnecting in ${settings.reconnectDelay/1000} seconds...`);
+      clearInterval(sleepCheckInterval);
       setTimeout(createBot, settings.reconnectDelay);
     });
 
@@ -75,25 +84,31 @@ function createBot() {
       console.log(`[${new Date().toLocaleString()}] Successfully connected!`);
       
       // القفز لتجنب AFK
-      const jumpInterval = setInterval(() => {
-        if(bot.entity) {
+      jumpInterval = setInterval(() => {
+        if(bot.entity && !isSleeping) {
           bot.setControlState('jump', true);
           setTimeout(() => bot.setControlState('jump', false), 500);
         }
       }, settings.jumpInterval);
 
       // الكتابة في الشات
-      const chatInterval = setInterval(() => {
-        if(bot.entity) {
+      chatInterval = setInterval(() => {
+        if(bot.entity && !isSleeping) {
           const randomMsg = settings.chatMessages[Math.floor(Math.random() * settings.chatMessages.length)];
           bot.chat(randomMsg);
         }
       }, settings.chatInterval);
 
+      // التحقق من وقت النوم كل 10 ثواني
+      sleepCheckInterval = setInterval(() => {
+        checkSleepConditions();
+      }, 10000);
+
       // تنظيف المؤقتات عند الخروج
       bot.on('end', () => {
         clearInterval(jumpInterval);
         clearInterval(chatInterval);
+        clearInterval(sleepCheckInterval);
       });
     });
 
@@ -101,6 +116,49 @@ function createBot() {
     bot.on('error', (err) => {
       console.error(`[${new Date().toLocaleString()}] ERROR: ${err}`);
     });
+    
+    // دالة التحقق من شروط النوم
+    function checkSleepConditions() {
+      // التحقق من أن البوت ليس نائماً بالفعل
+      if (isSleeping) return;
+      
+      // الحصول على وقت العالم
+      const time = bot.time.timeOfDay;
+      
+      // التحقق إذا كان الوقت ليلاً
+      const isNightTime = time >= settings.sleepTime[0] && time < settings.sleepTime[1];
+      
+      if (isNightTime) {
+        // البحث عن سرير قريب
+        const bedBlock = bot.findBlock({
+          matching: block => bot.isBed(block),
+          maxDistance: settings.bedSearchRadius
+        });
+        
+        if (bedBlock) {
+          console.log(`[${new Date().toLocaleString()}] Found bed at ${bedBlock.position}. Trying to sleep...`);
+          
+          // التوجه إلى السرير
+          bot.lookAt(bedBlock.position, true, () => {
+            // محاولة النوم
+            bot.sleep(bedBlock, (err) => {
+              if (err) {
+                console.log(`[${new Date().toLocaleString()}] Could not sleep: ${err.message}`);
+              } else {
+                console.log(`[${new Date().toLocaleString()}] Sleeping peacefully!`);
+                isSleeping = true;
+                
+                // الاستيقاظ التلقائي عند الصباح
+                bot.on('wake', () => {
+                  console.log(`[${new Date().toLocaleString()}] Woke up!`);
+                  isSleeping = false;
+                });
+              }
+            });
+          });
+        }
+      }
+    }
     
   } catch (err) {
     console.error(`[${new Date().toLocaleString()}] FATAL ERROR: ${err}`);

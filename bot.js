@@ -20,7 +20,7 @@ app.listen(PORT, () => {
 // 2. إعداد بوت ماينكرافت
 const serverIP = 'MCZonee.aternos.me';
 const serverPort = 41445;
-const version = '1.21.7';
+const version = '1.19.2';
 
 const settings = {
   jumpInterval: 15000,
